@@ -3,6 +3,7 @@
 #include <SDL.h> 
 #include <iostream>
 #include <time.h>  
+#include <SDL_mixer.h>
 
 #include "Button.h"
 #include "SudokuCell.h"
@@ -52,6 +53,13 @@ namespace Sudoku
 
 		// Define colours 
 		SDL_Color mClearColour;
+
+		// Sound effect and music
+		Mix_Chunk* soundEffect;
+		Mix_Music* music;
+		Mix_Chunk* newLevelEffect;
+		Mix_Chunk* winSoundEffect;
+		Mix_Chunk* checkSolutionSoundEffect;
 
 	private:
 		// Intialise SDL window, renderer and true type font

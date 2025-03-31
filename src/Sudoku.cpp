@@ -1,4 +1,4 @@
-#include "Sudoku.h"
+﻿#include "Sudoku.h"
 
 Sudoku::Sudoku::Sudoku()
 	: mWindowHeight(880), mWindowWidth(720),
@@ -38,6 +38,19 @@ bool Sudoku::Sudoku::initialiseSDL()
 		success = false;
 	}
 
+	// Initialise SDL audio subsystem
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		std::cerr << "SDL audio could not initialize! Error: " << SDL_GetError() << std::endl;
+		success = false;
+	}
+
+	// Initialise SDL_mixer
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+		std::cerr << "SDL_mixer coud not initialize! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+
+
 	// Create window
 	mWindow = SDL_CreateWindow("Sudoku", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWindowWidth, mWindowHeight, SDL_WINDOW_SHOWN);
 	if (mWindow == nullptr)
@@ -61,6 +74,41 @@ bool Sudoku::Sudoku::initialiseSDL()
 		std::cout << "Failed to load font! Error: " << TTF_GetError() << std::endl;
 		success = false;
 	}
+
+	// Load sound effect
+	soundEffect = Mix_LoadWAV("assets/effect.wav");
+	if (!soundEffect) {
+		std::cout << "Failed to load soundEffect! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+
+	// Load music theme
+	music = Mix_LoadMUS("assets/loop_music.mp3");
+	if (!music) {
+		std::cout << "Failed to load music! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+	// Load new game effect
+	newLevelEffect = Mix_LoadWAV("assets/new_game.wav");
+	Mix_VolumeChunk(newLevelEffect, 50);
+	if (!newLevelEffect) {
+		std::cout << "Failed to load new level soundeffect! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+
+	winSoundEffect = Mix_LoadWAV("assets/win.wav");
+	if (!winSoundEffect) {
+		std::cout << "Failed to load  winSoundeffect! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+
+	checkSolutionSoundEffect = Mix_LoadWAV("assets/checksolution.wav");
+	Mix_VolumeChunk(checkSolutionSoundEffect, 15);
+	if (!checkSolutionSoundEffect) {
+		std::cout << "Failed to load sound effect to check solution! Error: " << Mix_GetError() << std::endl;
+		success = false;
+	}
+
 
 	return success;
 }
@@ -261,6 +309,9 @@ void Sudoku::Sudoku::play()
 	// Generate Sudoku, set textures, and editability of each cell
 	generateSudoku();
 
+	// Play music theme on forever loop
+	Mix_PlayMusic(music, -1);
+
 	// Set first current cell selected
 	Cell* currentCellSelected = &mGrid[0];
 	for (int cell = 0; cell < mTotalCells; cell++)
@@ -308,12 +359,16 @@ void Sudoku::Sudoku::play()
 			{
 				// Set check solution flag
 				checkSolution = true;
+
 			}
 			// Handle mouse event for "New" button
 			if (mNewButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
 			{
 				// Set generate new Sudoku flag
 				generateNewSudoku = true;
+
+				// Play new level effect
+				Mix_PlayChannel(-1, newLevelEffect, 0);
 			}
 			// Handle mouse event for cells
 			for (int cell = 0; cell < mTotalCells; cell++)
@@ -330,6 +385,9 @@ void Sudoku::Sudoku::play()
 						// Set new cell selected to true
 						currentCellSelected = &mGrid[cell];
 						currentCellSelected->setSelected(true);
+
+						// Play sound effect
+						Mix_PlayChannel(-1, soundEffect, 0);
 					}
 				}
 			}
@@ -363,6 +421,7 @@ void Sudoku::Sudoku::play()
 			// Reset timer
 			time(&startTimer);
 		}
+
 		// If "Check" button was clicked
 		if (checkSolution)
 		{
@@ -387,9 +446,19 @@ void Sudoku::Sudoku::play()
 			measureTimeForCheckButton = true;
 			time(&startTimeForCheckButton);
 
+			// if you win
+			if (completed) {
+				Mix_PlayChannel(-1, winSoundEffect, 0);
+			}
+			else {
+				// Play check sound
+				Mix_PlayChannel(-1, checkSolutionSoundEffect, 0);
+			}
+
 			// Reset flag
 			checkSolution = false;
 		}
+
 		// If currently measuring time
 		if (measureTimeForCheckButton)
 		{
