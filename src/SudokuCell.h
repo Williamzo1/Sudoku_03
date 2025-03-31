@@ -36,7 +36,8 @@ namespace Sudoku
 		// Handle events
 		void handleKeyboardEvent(const SDL_Event* event, SDL_Texture* textureCache[]);
 
-		// Compare number with solution
+		void setCorrect();
+		// Compare number with solution and return true if them're equal
 		bool isCorrect() const;
 
 	};

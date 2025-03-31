@@ -377,6 +377,12 @@ void Sudoku::Sudoku::play()
 				completed = true;
 			}
 
+			for (int cell = 0;cell < mTotalCells;cell++) {
+				if (mGrid[cell].isEditable()) {
+					mGrid[cell].setCorrect();
+				}
+			}
+
 			// Set measure time flag and starting time
 			measureTimeForCheckButton = true;
 			time(&startTimeForCheckButton);

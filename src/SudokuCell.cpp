@@ -44,7 +44,7 @@ void Sudoku::Cell::setEditable(const bool editable)
 	{
 		mMouseOutColour = { 219, 184, 215, SDL_ALPHA_OPAQUE }; // light purple
 		mMouseOverMotionColour = { 95, 89, 191, SDL_ALPHA_OPAQUE }; // blue
-		mMouseDownColour = { 91, 191, 116, SDL_ALPHA_OPAQUE }; // green
+		mMouseDownColour = { 255, 255, 0, SDL_ALPHA_OPAQUE } ; // yellow
 		mMouseUpColour = { 95, 89, 191, SDL_ALPHA_OPAQUE }; // blue
 	}
 	else
@@ -86,6 +86,19 @@ void Sudoku::Cell::handleKeyboardEvent(const SDL_Event* event, SDL_Texture* text
 
 		}
 	}
+}
+
+void Sudoku::Cell::setCorrect()
+{
+	if (isCorrect()) {
+		mMouseOutColour = { 91, 191, 116, SDL_ALPHA_OPAQUE }; // green
+		mMouseDownColour = { 91, 191, 116, SDL_ALPHA_OPAQUE }; // green
+
+
+	}
+	//else {
+	//	mMouseOutColour = { 255, 0, 0, SDL_ALPHA_OPAQUE }; // red
+	//}
 }
 
 
