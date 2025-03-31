@@ -58,7 +58,7 @@ bool Sudoku::Sudoku::initialiseSDL()
 	mFont = TTF_OpenFont("assets/octin sports free.ttf", mFontSize);
 	if (mFont == nullptr)
 	{
-		std::cout << "Failed to load lazy font! Error: " << TTF_GetError() << std::endl;
+		std::cout << "Failed to load font! Error: " << TTF_GetError() << std::endl;
 		success = false;
 	}
 
@@ -457,12 +457,12 @@ void Sudoku::Sudoku::play()
 		mNewButton.centerTextureRect();
 		mNewButton.renderTexture(mRenderer);
 		
-		// Calculate timer
-		time_t difference = time(NULL) - startTimer;
-		tm formattedTime; 
-		localtime_s(&formattedTime, &difference);
-		char timer[80];
-		strftime(timer, sizeof(timer), "%H:%M:%S", &formattedTime);
+        // Calculate timer
+        time_t difference = time(NULL) - startTimer;
+        tm formattedTime;
+        gmtime_s(&formattedTime, &difference);
+        char timer[80];
+        strftime(timer, sizeof(timer), "%H:%M:%S", &formattedTime);
 
 		// Load and render timer (TO DO: use preloaded textures to render timer)
 		SDL_Texture* timerTexture = nullptr;
