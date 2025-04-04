@@ -8,6 +8,7 @@
 #include "Button.h"
 #include "SudokuCell.h"
 #include "SudokuGenerator.h"
+#include "GameState.h"
 
 namespace Sudoku
 {
@@ -32,7 +33,7 @@ namespace Sudoku
 
 		// Texture cache to hold preloaded textures
 		int mTotalTextures;
-		SDL_Texture* mTextureCache[14];
+		SDL_Texture* mTextureCache[20];
 
 		// Define true type font paramaters
 		TTF_Font* mFont;
@@ -47,6 +48,10 @@ namespace Sudoku
 		// Define check and new buttons
 		Button mCheckButton;
 		Button mNewButton;
+		Button mStartButton;
+		Button mPauseButton;
+		Button mPauseGameButton;
+
 
 		// Timer
 		Button mTimer;
@@ -60,6 +65,9 @@ namespace Sudoku
 		Mix_Chunk* newLevelEffect;
 		Mix_Chunk* winSoundEffect;
 		Mix_Chunk* checkSolutionSoundEffect;
+
+		// Define game state
+		Gamestate mGameState;
 
 	private:
 		// Intialise SDL window, renderer and true type font
@@ -83,6 +91,7 @@ namespace Sudoku
 		// Free textures
 		void freeTextures();
 
+
 	public:
 		// Constructor to intialise member variables
 		Sudoku();
@@ -100,3 +109,4 @@ namespace Sudoku
 	};
 
 };
+

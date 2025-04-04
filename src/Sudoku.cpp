@@ -6,7 +6,7 @@ Sudoku::Sudoku::Sudoku()
 	  mGridRows(9), mGridCols(9),
 	  mWindow(nullptr), mRenderer(nullptr), 
 	  mTotalTextures(14), mTextureCache{ nullptr },
-	  mFont(nullptr), mFontSize(mGridHeight/9),
+	  mFont(nullptr), mFontSize(mGridHeight/12),
 	  mTotalCells(81),
 	  mClearColour({ 0, 0, 0, SDL_ALPHA_OPAQUE })
 {
@@ -158,6 +158,37 @@ void Sudoku::Sudoku::preloadTextures()
 	loadTexture(mTextureCache[11], "New", fontColour);
 	loadTexture(mTextureCache[12], "Wrong!", fontColour);
 	loadTexture(mTextureCache[13], "Right!", fontColour);
+
+	// Load texture for start button
+	loadTexture(mTextureCache[14], "Start", fontColour);
+	// Load texture for pause button
+	loadTexture(mTextureCache[15], "Continue", fontColour);
+
+	// Load texture for pause game button
+	loadTexture(mTextureCache[17], "Resume", fontColour);
+
+	// Load texure for the menu
+	SDL_Texture* blueTexture = NULL;
+	SDL_Surface* surface = SDL_CreateRGBSurface(0, mWindowWidth, mWindowHeight, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+
+	// Set blue color for the surface
+	SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 173, 216, 230));
+
+	// Create texture from the surface
+	blueTexture = SDL_CreateTextureFromSurface(mRenderer, surface);
+
+
+	// Free surface
+	SDL_FreeSurface(surface);
+
+	// Push back texture
+	mTextureCache[16] = blueTexture;
+
+
+
+
+
+
 }
 
 void Sudoku::Sudoku::createInterfaceLayout()
@@ -210,14 +241,15 @@ void Sudoku::Sudoku::createInterfaceLayout()
 		}
 	}
 
-	const int numberOfOtherButtons = 2;
+	const int numberOfOtherButtons = 3;
 	mCheckButton.setTexture(mTextureCache[10]);
 	mNewButton.setTexture(mTextureCache[11]);
-	Button* otherButtons[numberOfOtherButtons] = { &mCheckButton, &mNewButton };
+	mPauseGameButton.setTexture(mTextureCache[17]);
+	Button* otherButtons[numberOfOtherButtons] = { &mCheckButton, &mNewButton, &mPauseGameButton };
 
 	// Redefine button width
-	// mGridWidth = 3 * thickBorder + 9 * numberOfOtherButtons (rearrange this equation)
-	buttonWidth = (mGridWidth - 3 * thickBorder) / numberOfOtherButtons;
+	// mGridWidth = 4 * thickBorder + 9 * numberOfOtherButtons (rearrange this equation)
+	buttonWidth = (mGridWidth - 4 * thickBorder) / numberOfOtherButtons;
 
 	// Carry on from previous starting row
 	buttonStartRow += buttonHeight + thickBorder;
@@ -238,6 +270,15 @@ void Sudoku::Sudoku::createInterfaceLayout()
 		otherButtons[button]->setButtonRect(buttonRect);
 	}
 
+	// Start button 
+	SDL_Rect rect = {(mWindowWidth-200)/2,(mWindowHeight-50)/2,200,50};
+	mStartButton.setButtonRect(rect);
+	mStartButton.setTexture(mTextureCache[14]);
+
+	// Pause button
+	SDL_Rect rect2 = { (mWindowWidth - 200) / 2, (mWindowHeight - 50) / 2 - 100, 200, 50 };
+	mPauseButton.setButtonRect(rect2);
+	mPauseButton.setTexture(mTextureCache[15]);
 }
 
 void Sudoku::Sudoku::generateSudoku()
@@ -342,220 +383,299 @@ void Sudoku::Sudoku::play()
 	time_t startTimer;
 	time(&startTimer);
 
-	// Game loop
-	while (!stop)
-	{
-		// Handle events on queue
-		while (SDL_PollEvent(&event) != 0)
-		{
-			// Handle quiting and completion
-			if (event.type == SDL_QUIT)
-			{
-				// Set stop flag
+	// Set default button state
+	mGameState = MENU;
+
+	while(mGameState != EXIT) {
+		while (SDL_PollEvent(&event)) {
+
+			// Handle quiting
+			if (event.type == SDL_QUIT) mGameState = EXIT;
+
+			//Handle EXIT state
+			if (mGameState == EXIT) {
 				stop = true;
+				break;
 			}
-			// Handle mouse event for "Check" button
-			if (mCheckButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
-			{
-				// Set check solution flag
-				checkSolution = true;
+
+			// Handle MENU state
+			if (mGameState == MENU) {
+				if (mStartButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN) {
+					mGameState = PLAYING;
+
+					// Start time
+					time(&startTimer);
+				}
+				SDL_RenderCopy(mRenderer, mTextureCache[16], NULL, NULL);
+				mStartButton.centerTextureRect();
+				mStartButton.renderTexture(mRenderer);
+
+				SDL_RenderPresent(mRenderer);
+
 
 			}
-			// Handle mouse event for "New" button
-			if (mNewButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
-			{
-				// Set generate new Sudoku flag
-				generateNewSudoku = true;
+			// Handle PAUSED state
+			if (mGameState == PAUSED) {
+				if (mStartButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN) {
+					mGameState = PLAYING;
+					generateNewSudoku = true;
+					stop = false;
+				}
+				if (mPauseButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN) {
+					mGameState = PLAYING;
+					stop = false;
+				}
+				SDL_RenderCopy(mRenderer, mTextureCache[16], NULL, NULL);
 
-				// Play new level effect
-				Mix_PlayChannel(-1, newLevelEffect, 0);
+				// Render start button
+				mStartButton.centerTextureRect();
+				mStartButton.renderTexture(mRenderer);
+
+				// Render pause button
+				mPauseButton.centerTextureRect();
+				mPauseButton.renderTexture(mRenderer);
+
+				// Render present
+				SDL_RenderPresent(mRenderer);
 			}
-			// Handle mouse event for cells
-			for (int cell = 0; cell < mTotalCells; cell++)
-			{
-				// If editable
-				if (mGrid[cell].isEditable())
+
+			// Handle PLAYING state
+			if (mGameState == PLAYING) {
+				// Game loop
+				while (!stop)
 				{
-					// Set button state and return if mouse pressed on cell
-					if (mGrid[cell].getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
+					// Handle events on queue
+					while (SDL_PollEvent(&event) != 0)
 					{
+						// Handle quiting and completion
+						if (event.type == SDL_QUIT)
+						{
+							// Set stop flag
+							stop = true;
+
+							// Set game state
+							mGameState = EXIT;
+
+						}
+						// Handle mouse event for "Check" button
+						if (mCheckButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
+						{
+							// Set check solution flag
+							checkSolution = true;
+
+						}
+						// Handle mouse event for "New" button
+						if (mNewButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
+						{
+							// Set generate new Sudoku flag
+							generateNewSudoku = true;
+
+							// Play new level effect
+							Mix_PlayChannel(-1, newLevelEffect, 0);
+						}
+						// Handle mouse event for "Pause" button
+						if (mPauseGameButton.getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
+						{
+							// Set game state to paused
+							mGameState = PAUSED;
+							stop = true;
+						}
+						// Handle mouse event for cells
+						for (int cell = 0; cell < mTotalCells; cell++)
+						{
+							// If editable
+							if (mGrid[cell].isEditable())
+							{
+								// Set button state and return if mouse pressed on cell
+								if (mGrid[cell].getMouseEvent(&event) == ButtonState::BUTTON_MOUSE_DOWN)
+								{
+									// Set current cell selected to false
+									currentCellSelected->setSelected(false);
+
+									// Set new cell selected to true
+									currentCellSelected = &mGrid[cell];
+									currentCellSelected->setSelected(true);
+
+									// Play sound effect
+									Mix_PlayChannel(-1, soundEffect, 0);
+								}
+							}
+						}
+						// Handle keyboard events for current cell selected
+						currentCellSelected->handleKeyboardEvent(&event, mTextureCache);
+					}
+					// If "New" button was clicked
+					if (generateNewSudoku)
+					{
+						// Generate new sudoku
+						generateSudoku();
+
 						// Set current cell selected to false
 						currentCellSelected->setSelected(false);
-						
-						// Set new cell selected to true
-						currentCellSelected = &mGrid[cell];
-						currentCellSelected->setSelected(true);
 
-						// Play sound effect
-						Mix_PlayChannel(-1, soundEffect, 0);
+						// Find new starting cell
+						for (int cell = 0; cell < mTotalCells; cell++)
+						{
+							if (mGrid[cell].isEditable())
+							{
+								currentCellSelected = &mGrid[cell];
+								currentCellSelected->setSelected(true);
+								break;
+							}
+						}
+
+						// Reset flags
+						generateNewSudoku = false;
+						completed = false;
+
+						// Reset timer
+						time(&startTimer);
 					}
+
+					// If "Check" button was clicked
+					if (checkSolution)
+					{
+						// Check if complete
+						for (int cell = 0; cell < mTotalCells; cell++)
+						{
+							if (!mGrid[cell].isCorrect())
+							{
+								completed = false;
+								break;
+							}
+							completed = true;
+						}
+
+						for (int cell = 0;cell < mTotalCells;cell++) {
+							if (mGrid[cell].isEditable()) {
+								mGrid[cell].setCorrect();
+							}
+						}
+
+						// Set measure time flag and starting time
+						measureTimeForCheckButton = true;
+						time(&startTimeForCheckButton);
+
+						// if you win
+						if (completed) {
+							Mix_PlayChannel(-1, winSoundEffect, 0);
+						}
+						else {
+							// Play check sound
+							Mix_PlayChannel(-1, checkSolutionSoundEffect, 0);
+						}
+
+						// Reset flag
+						checkSolution = false;
+					}
+
+					// If currently measuring time
+					if (measureTimeForCheckButton)
+					{
+						int seconds = 2;
+						if (difftime(time(NULL), startTimeForCheckButton) < seconds && completed)
+						{
+							// Set colour to green
+							SDL_Color colour = { 91, 191, 116, SDL_ALPHA_OPAQUE };
+
+							// Set render colour to green
+							SDL_SetRenderDrawColor(mRenderer, colour.r, colour.g, colour.b, SDL_ALPHA_OPAQUE);
+
+							// Set texture to "Right!"
+							mCheckButton.setTexture(mTextureCache[13]);
+
+							// Set mouse down colour to green
+							mCheckButton.setMouseDownColour(colour);
+						}
+						else if (difftime(time(NULL), startTimeForCheckButton) < seconds && !completed)
+						{
+							// Set colour to red
+							SDL_Color colour = { 200, 73, 46, SDL_ALPHA_OPAQUE };
+
+							// Set render colour to red
+							SDL_SetRenderDrawColor(mRenderer, colour.r, colour.g, colour.b, SDL_ALPHA_OPAQUE);
+
+							// Set texture to "Wrong!"
+							mCheckButton.setTexture(mTextureCache[12]);
+
+							// Set mouse down colour to red
+							mCheckButton.setMouseDownColour(colour);
+						}
+						else
+						{
+							// Reset measure time flag
+							measureTimeForCheckButton = false;
+						}
+					}
+					else
+					{
+						// Set texture to "Check"
+						mCheckButton.setTexture(mTextureCache[10]);
+
+						// Set render colour to black
+						SDL_SetRenderDrawColor(mRenderer, mClearColour.r, mClearColour.g, mClearColour.b, mClearColour.a);
+					}
+
+					// Clear screen with rendered colour
+					SDL_RenderClear(mRenderer);
+
+					// Render buttons and texture of each cell to backbuffer
+					for (int cell = 0; cell < mTotalCells; cell++)
+					{
+						// Render button
+						mGrid[cell].renderButton(mRenderer);
+
+						// Re-center since diffrerent numbers have different sized textures
+						mGrid[cell].centerTextureRect();
+
+						// Render texture
+						mGrid[cell].renderTexture(mRenderer);
+					}
+
+					// Render check button
+					mCheckButton.renderButton(mRenderer);
+					mCheckButton.centerTextureRect();
+					mCheckButton.renderTexture(mRenderer);
+
+					// Render new button
+					mNewButton.renderButton(mRenderer);
+					mNewButton.centerTextureRect();
+					mNewButton.renderTexture(mRenderer);
+
+					// Render pause button
+					mPauseGameButton.renderButton(mRenderer);
+					mPauseGameButton.centerTextureRect();
+					mPauseGameButton.renderTexture(mRenderer);
+
+					// Calculate timer
+					time_t difference = time(NULL) - startTimer;
+					tm formattedTime;
+					gmtime_s(&formattedTime, &difference);
+					char timer[80];
+					strftime(timer, sizeof(timer), "%H:%M:%S", &formattedTime);
+
+					// Load and render timer (TO DO: use preloaded textures to render timer)
+					SDL_Texture* timerTexture = nullptr;
+					SDL_Color fontColour = { 0, 0, 0, SDL_ALPHA_OPAQUE }; // black
+					loadTexture(timerTexture, timer, fontColour);
+					mTimer.setTexture(timerTexture);
+					mTimer.renderButton(mRenderer);
+					mTimer.centerTextureRect();
+					mTimer.renderTexture(mRenderer);
+					SDL_DestroyTexture(timerTexture);
+					timerTexture = nullptr;
+
+					// Update screen from backbuffer and clear backbuffer
+					SDL_RenderPresent(mRenderer);
+
+					// Slow down program becuase it doesn't need to run very fast
+					SDL_Delay(10);
 				}
-			}
-			// Handle keyboard events for current cell selected
-			currentCellSelected->handleKeyboardEvent(&event, mTextureCache);
-		}
-		// If "New" button was clicked
-		if (generateNewSudoku)
-		{
-			// Generate new sudoku
-			generateSudoku();
 
-			// Set current cell selected to false
-			currentCellSelected->setSelected(false);
-
-			// Find new starting cell
-			for (int cell = 0; cell < mTotalCells; cell++)
-			{
-				if (mGrid[cell].isEditable())
-				{
-					currentCellSelected = &mGrid[cell];
-					currentCellSelected->setSelected(true);
-					break;
-				}
-			}
-
-			// Reset flags
-			generateNewSudoku = false;
-			completed = false;
-
-			// Reset timer
-			time(&startTimer);
-		}
-
-		// If "Check" button was clicked
-		if (checkSolution)
-		{
-			// Check if complete
-			for (int cell = 0; cell < mTotalCells; cell++)
-			{
-				if (!mGrid[cell].isCorrect())
-				{
-					completed = false;
-					break;
-				}
-				completed = true;
-			}
-
-			for (int cell = 0;cell < mTotalCells;cell++) {
-				if (mGrid[cell].isEditable()) {
-					mGrid[cell].setCorrect();
-				}
-			}
-
-			// Set measure time flag and starting time
-			measureTimeForCheckButton = true;
-			time(&startTimeForCheckButton);
-
-			// if you win
-			if (completed) {
-				Mix_PlayChannel(-1, winSoundEffect, 0);
-			}
-			else {
-				// Play check sound
-				Mix_PlayChannel(-1, checkSolutionSoundEffect, 0);
-			}
-
-			// Reset flag
-			checkSolution = false;
-		}
-
-		// If currently measuring time
-		if (measureTimeForCheckButton)
-		{
-			int seconds = 2;
-			if (difftime(time(NULL), startTimeForCheckButton) < seconds && completed)
-			{
-				// Set colour to green
-				SDL_Color colour = { 91, 191, 116, SDL_ALPHA_OPAQUE };
-
-				// Set render colour to green
-				SDL_SetRenderDrawColor(mRenderer, colour.r, colour.g, colour.b, SDL_ALPHA_OPAQUE);
-
-				// Set texture to "Right!"
-				mCheckButton.setTexture(mTextureCache[13]);
-
-				// Set mouse down colour to green
-				mCheckButton.setMouseDownColour(colour);
-			}
-			else if (difftime(time(NULL), startTimeForCheckButton) < seconds && !completed)
-			{
-				// Set colour to red
-				SDL_Color colour = { 200, 73, 46, SDL_ALPHA_OPAQUE };
-
-				// Set render colour to red
-				SDL_SetRenderDrawColor(mRenderer, colour.r, colour.g, colour.b, SDL_ALPHA_OPAQUE);
-
-				// Set texture to "Wrong!"
-				mCheckButton.setTexture(mTextureCache[12]);
-
-				// Set mouse down colour to red
-				mCheckButton.setMouseDownColour(colour);
-			}
-			else
-			{
-				// Reset measure time flag
-				measureTimeForCheckButton = false;
 			}
 		}
-		else
-		{
-			// Set texture to "Check"
-			mCheckButton.setTexture(mTextureCache[10]);
-
-			// Set render colour to black
-			SDL_SetRenderDrawColor(mRenderer, mClearColour.r, mClearColour.g, mClearColour.b, mClearColour.a);
-		}
-
-		// Clear screen with rendered colour
-		SDL_RenderClear(mRenderer);
-
-		// Render buttons and texture of each cell to backbuffer
-		for (int cell = 0; cell < mTotalCells; cell++)
-		{
-			// Render button
-			mGrid[cell].renderButton(mRenderer);
-
-			// Re-center since diffrerent numbers have different sized textures
-			mGrid[cell].centerTextureRect();
-
-			// Render texture
-			mGrid[cell].renderTexture(mRenderer);
-		}
-
-		// Render check button
-		mCheckButton.renderButton(mRenderer);
-		mCheckButton.centerTextureRect();
-		mCheckButton.renderTexture(mRenderer);
-
-		// Render new button
-		mNewButton.renderButton(mRenderer);
-		mNewButton.centerTextureRect();
-		mNewButton.renderTexture(mRenderer);
-		
-        // Calculate timer
-        time_t difference = time(NULL) - startTimer;
-        tm formattedTime;
-        gmtime_s(&formattedTime, &difference);
-        char timer[80];
-        strftime(timer, sizeof(timer), "%H:%M:%S", &formattedTime);
-
-		// Load and render timer (TO DO: use preloaded textures to render timer)
-		SDL_Texture* timerTexture = nullptr;
-		SDL_Color fontColour = { 0, 0, 0, SDL_ALPHA_OPAQUE }; // black
-		loadTexture(timerTexture, timer, fontColour);
-		mTimer.setTexture(timerTexture);
-		mTimer.renderButton(mRenderer);
-		mTimer.centerTextureRect();
-		mTimer.renderTexture(mRenderer);
-		SDL_DestroyTexture(timerTexture);
-		timerTexture = nullptr;
-
-		// Update screen from backbuffer and clear backbuffer
-		SDL_RenderPresent(mRenderer);
-
-		// Slow down program becuase it doesn't need to run very fast
-		SDL_Delay(10);
 	}
+
 
 	// Disable text input
 	SDL_StopTextInput();

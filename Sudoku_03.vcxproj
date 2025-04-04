@@ -139,6 +139,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Button.h" />
+    <ClInclude Include="src\GameState.h" />
+    <ClInclude Include="src\Menu.h" />
     <ClInclude Include="src\Sudoku.h" />
     <ClInclude Include="src\SudokuCell.h" />
     <ClInclude Include="src\SudokuGenerator.h" />
